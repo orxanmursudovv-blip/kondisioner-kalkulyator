@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Reklam Kampaniya Kalkulyatoru</title>
+
+<!-- PWA ayarları -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1720">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kalkulyator">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0f1720;
+    --panel:#16212c;
+    --panel-2:#1c2b38;
+    --line:#28394a;
+    --text:#e8eef2;
+    --muted:#8ea3b4;
+    --accent:#3fb68a;
+    --accent-dim:#2c8a68;
+    --warn:#e0a83a;
+    --mono: 'SF Mono', 'Consolas', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    padding:20px 14px 60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  header{margin-bottom:20px;}
+  header .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    color:var(--accent);
+    text-transform:uppercase;
+  }
+  h1{
+    font-size:21px;
+    margin:6px 0 2px;
+    font-weight:650;
+    letter-spacing:-.01em;
+  }
+  header p{margin:0;color:var(--muted);font-size:13.5px;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    margin:0 0 12px;
+    font-weight:600;
+  }
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13.5px;
+    color:var(--text);
+    margin-bottom:5px;
+  }
+  label .unit{color:var(--muted);font-size:12px;font-family:var(--mono);}
+  input[type=number]{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:9px;
+    color:var(--text);
+    font-size:16px;
+    font-family:var(--mono);
+    padding:10px 12px;
+  }
+  input[type=number]:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+  .results{
+    background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:4px;
+  }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:13px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .row:last-child{border-bottom:none;}
+  .row .label{font-size:13.5px;color:var(--muted);}
+  .row .value{
+    font-family:var(--mono);
+    font-size:17px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .row.highlight .value{color:var(--accent);font-size:19px;}
+  .row.highlight .label{color:var(--text);}
+  .badge{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:10.5px;
+    padding:2px 6px;
+    border-radius:5px;
+    background:rgba(63,182,138,.12);
+    color:var(--accent);
+    margin-left:6px;
+  }
+  .badge.low{background:rgba(224,168,58,.14);color:var(--warn);}
+
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:11.5px;
+    margin-top:18px;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">e-service.az · reklam analitikası</div>
+    <h1>Kampaniya Kalkulyatoru</h1>
+    <p>Reklam xərci, mesaj və konversiya rəqəmlərinə əsasən mesaj başı xərc, gəlir və marjanı hesablayır.</p>
+  </header>
+
+  <div class="card">
+    <h2>Xam göstəricilər</h2>
+    <div class="field">
+      <label>Reklam xərci <span class="unit">AZN</span></label>
+      <input type="number" id="spend" value="5186.70" step="0.01">
+    </div>
+    <div class="field">
+      <label>Mesaj sayı <span class="unit">ədəd</span></label>
+      <input type="number" id="messages" value="2893" step="1">
+    </div>
+    <div class="field">
+      <label>Tamamlanmış sifariş <span class="unit">ədəd</span></label>
+      <input type="number" id="completed" value="461" step="1">
+    </div>
+    <div class="field">
+      <label>USD/AZN məzənnə</label>
+      <input type="number" id="rate" value="1.7" step="0.01">
+      <div class="hint">Rəsmi sabit məzənnə. Lazım olsa dəyişin.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Gəlir formulu</h2>
+    <div class="field">
+      <label>Orta sifariş dəyəri <span class="unit">AZN</span></label>
+      <input type="number" id="avgOrder" value="58.83" step="0.01">
+      <div class="hint">Usta bir sifarişdən orta hesabla nə qədər pul alır (məs. 100 AZN).</div>
+    </div>
+    <div class="field">
+      <label>Şirkət payı <span class="unit">%</span></label>
+      <input type="number" id="companyShare" value="35" step="0.1">
+      <div class="hint">Qalan hissə ustanındır, hesaba daxil edilmir.</div>
+    </div>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <div class="card" style="margin-top:14px;">
+    <h2>Kampaniyanı saxla</h2>
+    <div class="field">
+      <label>Kampaniya adı</label>
+      <input type="text" id="campaignName" placeholder="məs. İyul 2026 - Kondisioner" style="font-family:inherit;">
+    </div>
+    <button id="saveBtn" style="width:100%;padding:12px;border-radius:9px;border:none;background:var(--accent);color:#08130f;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px;">Yadda saxla (GitHub-a yaz)</button>
+    <div id="saveStatus" class="hint" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card" id="historyCard" style="margin-top:14px;">
+    <h2>Tarixçə</h2>
+    <div id="historyList" class="hint">Yüklənir...</div>
+  </div>
+
+  <footer>Şirkət gəliri = Tamamlanmış × Orta sifariş × Şirkət payı<br>Marja = (Qazanc − Xərc) ÷ Xərc × 100 · nəticələr real vaxtda yenilənir</footer>
+</div>
+
+<script>
+// ---- API konfiqurasiyası ----
+// Bu faylı öz serverinizdə host etməzdən əvvəl bu iki dəyəri dəyişin:
+const API_BASE = 'https://kondisioner-kalkulyator-api.orxanmursudov.workers.dev'; // öz API ünvanınız (VPS-də PM2 ilə işləyən server.js)
+const API_KEY  = 'BURAYA_OZ_ACARINIZI_YAZIN'; // wrangler secret put API_KEY-də yazdığınız açar
+</script>
+function fmt(n, d=2){
+  if(!isFinite(n)) return '—';
+  return n.toLocaleString('az-AZ', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+
+function calc(){
+  const spend = parseFloat(document.getElementById('spend').value) || 0;
+  const messages = parseFloat(document.getElementById('messages').value) || 0;
+  const completed = parseFloat(document.getElementById('completed').value) || 0;
+  const rate = parseFloat(document.getElementById('rate').value) || 1;
+  const avgOrder = parseFloat(document.getElementById('avgOrder').value) || 0;
+  const companyShare = parseFloat(document.getElementById('companyShare').value) || 0;
+
+  const spendUSD = spend / rate;
+  const costPerMsg = messages > 0 ? spendUSD / messages : 0;
+  const conversion = messages > 0 ? (completed / messages) * 100 : 0;
+
+  // Şirkətin ümumi gəliri: tamamlanmış sifariş × orta dəyər × şirkət payı
+  const totalEarnAZN = completed * avgOrder * (companyShare / 100);
+  const totalEarnUSD = totalEarnAZN / rate;
+  const earnPerMsg = messages > 0 ? totalEarnUSD / messages : 0;
+
+  const margin = costPerMsg > 0 ? ((earnPerMsg - costPerMsg) / costPerMsg) * 100 : 0;
+  const costPerCompleted = completed > 0 ? spendUSD / completed : 0;
+  const netProfitUSD = totalEarnUSD - spendUSD;
+
+  const marginBadge = margin >= 50
+    ? `<span class="badge">sağlam</span>`
+    : (margin >= 0 ? `<span class="badge low">zəif</span>` : `<span class="badge low">itki</span>`);
+
+  document.getElementById('results').innerHTML = `
+    <div class="row">
+      <div class="label">Reklam xərci (USD)</div>
+      <div class="value">$${fmt(spendUSD)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Mesaj başı xərc</div>
+      <div class="value">$${fmt(costPerMsg)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Tamamlanmış başı xərc</div>
+      <div class="value">$${fmt(costPerCompleted)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Operator faizi (konversiya)</div>
+      <div class="value">${fmt(conversion,1)}%</div>
+    </div>
+    <div class="row">
+      <div class="label">Qazanc, mesaj başı</div>
+      <div class="value">$${fmt(earnPerMsg)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Ümumi gəlir (USD)</div>
+      <div class="value">$${fmt(totalEarnUSD)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Şirkətin gəliri (AZN)</div>
+      <div class="value">${fmt(totalEarnAZN)}</div>
+    </div>
+    <div class="row">
+      <div class="label">Xalis mənfəət (USD)</div>
+      <div class="value">$${fmt(netProfitUSD)}</div>
+    </div>
+    <div class="row highlight">
+      <div class="label">Marja ${marginBadge}</div>
+      <div class="value">${fmt(margin,1)}%</div>
+    </div>
+  `;
+}
+
+document.querySelectorAll('input').forEach(el => el.addEventListener('input', calc));
+calc();
+
+// ---- Saxlama ----
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('saveStatus');
+  const payload = {
+    name: document.getElementById('campaignName').value,
+    spend: parseFloat(document.getElementById('spend').value) || 0,
+    messages: parseFloat(document.getElementById('messages').value) || 0,
+    completed: parseFloat(document.getElementById('completed').value) || 0,
+    rate: parseFloat(document.getElementById('rate').value) || 1,
+    avgOrder: parseFloat(document.getElementById('avgOrder').value) || 0,
+    companyShare: parseFloat(document.getElementById('companyShare').value) || 0,
+  };
+  statusEl.textContent = 'Göndərilir...';
+  try {
+    const res = await fetch(`${API_BASE}/api/campaigns`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Xəta baş verdi');
+    statusEl.textContent = '✓ GitHub-a yazıldı';
+    document.getElementById('campaignName').value = '';
+    loadHistory();
+  } catch (err) {
+    statusEl.textContent = '✗ ' + err.message;
+  }
+});
+
+// ---- Tarixçə ----
+async function loadHistory() {
+  const el = document.getElementById('historyList');
+  try {
+    const res = await fetch(`${API_BASE}/api/campaigns`);
+    const list = await res.json();
+    if (!list.length) {
+      el.textContent = 'Hələ saxlanmış kampaniya yoxdur.';
+      return;
+    }
+    el.innerHTML = list.slice().reverse().map(c => `
+      <div style="padding:10px 0;border-bottom:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;font-size:13.5px;color:var(--text);">
+          <strong>${c.name}</strong>
+          <span style="color:var(--accent);font-family:var(--mono);">${fmt(c.results.margin,1)}%</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">
+          ${new Date(c.date).toLocaleDateString('az-AZ')} · mesaj xərci $${fmt(c.results.costPerMsg)} · gəlir $${fmt(c.results.earnPerMsg)}
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    el.textContent = 'API-yə qoşulmaq mümkün olmadı. API_BASE ünvanını yoxlayın.';
+  }
+}
+loadHistory();
+
+// ---- PWA: service worker qeydiyyatı (offline dəstək + ekrana quraşdırma) ----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
