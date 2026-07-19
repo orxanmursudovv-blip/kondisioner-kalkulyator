@@ -89,6 +89,21 @@
   }
   .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:30px 10px;}
 
+  .filter-bar{
+    display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  .filter-bar label{font-size:12px;color:var(--muted);}
+  select#sectorFilter{
+    background:var(--panel); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:8px; font-size:13px; font-family:inherit; flex:1; min-width:140px;
+  }
+  .clear-filter{
+    font-size:11.5px; color:var(--accent); background:none; border:none; cursor:pointer;
+    font-family:inherit; text-decoration:underline; padding:4px;
+  }
+  tbody tr{cursor:pointer;}
+  tbody tr:hover{background:rgba(255,255,255,.03);}
+
   @media (max-width:400px){
     .kpi .value{font-size:17px;}
     table{font-size:11px;}
@@ -106,6 +121,14 @@
     <a class="nav-link" href="index.html">← Kalkulyator</a>
   </header>
 
+  <div class="filter-bar" id="filterBar" style="display:none;">
+    <label for="sectorFilter">Sahə:</label>
+    <select id="sectorFilter">
+      <option value="">Hamısı</option>
+    </select>
+    <button class="clear-filter" id="clearFilterBtn" style="display:none;">Təmizlə</button>
+  </div>
+
   <div id="content">
     <div class="empty">Yüklənir...</div>
   </div>
@@ -113,29 +136,69 @@
 
 <script>
 const API_BASE = 'https://kondisioner-kalkulyator-api.orxanmursudov.workers.dev';
+let fullList = [];
+let marginChartInstance = null;
+let spendEarnChartInstance = null;
 
 function fmt(n, d=2){
   if(!isFinite(n)) return '—';
   return n.toLocaleString('az-AZ', {minimumFractionDigits:d, maximumFractionDigits:d});
 }
 
+function setSectorFilter(sector){
+  document.getElementById('sectorFilter').value = sector;
+  applyFilter();
+}
+
+function applyFilter(){
+  const val = document.getElementById('sectorFilter').value;
+  document.getElementById('clearFilterBtn').style.display = val ? 'inline' : 'none';
+  const filtered = val ? fullList.filter(c => (c.sector || '') === val) : fullList;
+  renderDashboard(filtered);
+}
+
 async function load() {
   const contentEl = document.getElementById('content');
-  let list;
   try {
     const res = await fetch(`${API_BASE}/api/campaigns`);
-    list = await res.json();
+    fullList = await res.json();
   } catch (err) {
     contentEl.innerHTML = `<div class="empty">API-yə qoşulmaq mümkün olmadı.</div>`;
     return;
   }
 
-  if (!list.length) {
+  if (!fullList.length) {
     contentEl.innerHTML = `<div class="empty">Hələ saxlanmış kampaniya yoxdur.<br>Kalkulyatorda ilk kampaniyanı əlavə edin.</div>`;
     return;
   }
 
-  list.sort((a,b) => new Date(a.date) - new Date(b.date));
+  // ---- Sahə süzgəcini doldur ----
+  const sectors = [...new Set(fullList.map(c => c.sector).filter(Boolean))];
+  if (sectors.length > 0) {
+    const sel = document.getElementById('sectorFilter');
+    sectors.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    document.getElementById('filterBar').style.display = 'flex';
+    sel.addEventListener('change', applyFilter);
+    document.getElementById('clearFilterBtn').addEventListener('click', () => setSectorFilter(''));
+  }
+
+  renderDashboard(fullList);
+}
+
+function renderDashboard(list) {
+  const contentEl = document.getElementById('content');
+  list = list.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  if (!list.length) {
+    contentEl.innerHTML = `<div class="empty">Bu süzgəcə uyğun kampaniya tapılmadı.</div>`;
+    if (marginChartInstance) { marginChartInstance.destroy(); marginChartInstance = null; }
+    if (spendEarnChartInstance) { spendEarnChartInstance.destroy(); spendEarnChartInstance = null; }
+    return;
+  }
 
   const totalSpendUSD = list.reduce((s,c) => s + c.results.spendUSD, 0);
   const totalEarnUSD = list.reduce((s,c) => s + c.results.totalEarnUSD, 0);
@@ -176,9 +239,12 @@ async function load() {
               let tag = '';
               if (c.id === best.id && list.length > 1) { rowClass='best'; tag='<span class="tag best">ən yaxşı</span>'; }
               else if (c.id === worst.id && list.length > 1) { rowClass='worst'; tag='<span class="tag worst">ən zəif</span>'; }
+              const sectorHtml = c.sector
+                ? `<br><span class="sector-link" data-sector="${c.sector.replace(/"/g,'&quot;')}" style="color:var(--accent);font-size:10.5px;text-decoration:underline;">${c.sector}</span>`
+                : '';
               return `
                 <tr class="${rowClass}">
-                  <td>${c.name}${c.sector ? '<br><span style="color:var(--muted);font-size:10.5px;">'+c.sector+'</span>' : ''} ${tag}</td>
+                  <td>${c.name}${sectorHtml} ${tag}</td>
                   <td>${new Date(c.date).toLocaleDateString('az-AZ')}</td>
                   <td class="num">${fmt(c.results.margin,1)}%</td>
                   <td class="num">$${fmt(c.results.spendUSD,0)}</td>
@@ -195,8 +261,19 @@ async function load() {
     </div>
   `;
 
-  // ---- Marja trend qrafiki ----
-  new Chart(document.getElementById('marginChart'), {
+  // Sahə mətninə klik → o sahəyə görə süzgəc
+  contentEl.querySelectorAll('.sector-link').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSectorFilter(el.dataset.sector);
+    });
+  });
+
+  // ---- Köhnə qrafikləri təmizləyib yenidən çəkmək ----
+  if (marginChartInstance) marginChartInstance.destroy();
+  if (spendEarnChartInstance) spendEarnChartInstance.destroy();
+
+  marginChartInstance = new Chart(document.getElementById('marginChart'), {
     type: 'line',
     data: {
       labels: list.map(c => new Date(c.date).toLocaleDateString('az-AZ', {day:'2-digit', month:'2-digit'})),
@@ -220,8 +297,7 @@ async function load() {
     }
   });
 
-  // ---- Xərc vs Gəlir qrafiki ----
-  new Chart(document.getElementById('spendEarnChart'), {
+  spendEarnChartInstance = new Chart(document.getElementById('spendEarnChart'), {
     type: 'bar',
     data: {
       labels: list.map(c => new Date(c.date).toLocaleDateString('az-AZ', {day:'2-digit', month:'2-digit'})),
